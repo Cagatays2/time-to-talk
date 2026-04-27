@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -9,10 +9,10 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Lock, Plus, Settings2 } from "lucide-react";
+import { Lock, Plus, Settings2, Shapes } from "lucide-react";
 import PhraseCarousel from "./PhraseCarousel";
 import SentenceBar from "./SentenceBar";
-import { phraseSections } from "../lib/phrases";
+import { phraseSections, simplePhraseSections } from "../lib/phrases";
 import { composeSentence, phraseToWords } from "../lib/sentence";
 import type { SentenceToken } from "../lib/tokens";
 
@@ -24,8 +24,10 @@ function TalkScreen({ onBack }: TalkScreenProps) {
   const [tokens, setTokens] = useState<SentenceToken[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showParentTools, setShowParentTools] = useState(false);
+  const [showMoreWords, setShowMoreWords] = useState(false);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
+  const visibleSections = showMoreWords ? phraseSections : simplePhraseSections;
   const sentence = useMemo(() => composeSentence(tokens.map((token) => token.text)), [tokens]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -46,6 +48,10 @@ function TalkScreen({ onBack }: TalkScreenProps) {
   const addPhrase = (phrase: string) => {
     setTokens((current) => [...current, ...createWordTokens(phraseToWords(phrase))]);
   };
+
+  useEffect(() => {
+    setActiveSectionIndex(0);
+  }, [showMoreWords]);
 
   const removeToken = (tokenId: string) => {
     setTokens((current) => current.filter((token) => token.id !== tokenId));
@@ -94,19 +100,38 @@ function TalkScreen({ onBack }: TalkScreenProps) {
         <div className="mx-auto mt-5 max-w-7xl space-y-5">
           <div className="flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Builder</p>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">{showMoreWords ? "More Words" : "Simple Talk"}</p>
               <h1 className="text-3xl font-black tracking-normal text-slate-950 sm:text-4xl">Time to Talk</h1>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowParentTools((value) => !value)}
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-5 text-lg font-black text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95"
-              aria-pressed={showParentTools}
-            >
-              <Lock className="h-5 w-5" aria-hidden="true" />
-              <span>Parent Edit</span>
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setShowMoreWords((value) => !value)}
+                className={[
+                  "inline-flex min-h-14 items-center justify-center gap-3 rounded-full border px-5 text-lg font-black transition focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95",
+                  showMoreWords
+                    ? "border-slate-900 bg-slate-950 text-white shadow-sm"
+                    : "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={showMoreWords}
+              >
+                <Shapes className="h-5 w-5" aria-hidden="true" />
+                <span>{showMoreWords ? "Simple Words" : "More Words"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowParentTools((value) => !value)}
+                className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-5 text-lg font-black text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95"
+                aria-pressed={showParentTools}
+              >
+                <Lock className="h-5 w-5" aria-hidden="true" />
+                <span>Parent</span>
+              </button>
+            </div>
           </div>
 
           {showParentTools && (
@@ -137,7 +162,7 @@ function TalkScreen({ onBack }: TalkScreenProps) {
           )}
 
           <PhraseCarousel
-            sections={phraseSections}
+            sections={visibleSections}
             activeIndex={activeSectionIndex}
             onSelectIndex={setActiveSectionIndex}
             onSelectPhrase={addPhrase}
